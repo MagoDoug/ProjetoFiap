@@ -3,4 +3,3 @@ flask-socketio
 eventlet
 requests
 flasgger
-sqlite3
