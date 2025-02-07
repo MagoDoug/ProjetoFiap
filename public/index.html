@@ -119,7 +119,7 @@
                 const data = await response.json();
                 console.log("🔍 Dados recebidos da API:", data);
 
-                if (data.status) {
+                if (data && data.status) {
                     atualizarStatus(data.status, data.descricao_detalhada);
                 } else {
                     console.warn("⚠️ Campo 'status' não encontrado na resposta da API.");
@@ -157,7 +157,7 @@
                     timeElement.textContent = new Date().toLocaleTimeString();
                 }
                 if (descricaoElement) {
-                    descricaoElement.textContent = descricao;
+                    descricaoElement.textContent = descricao || "Descrição não disponível";
                 } else {
                     console.warn(`⚠️ Elemento .descricao-detalhada não encontrado para ${status}`);
                 }
