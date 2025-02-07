@@ -3,3 +3,4 @@ flask-socketio
 eventlet
 requests
 flasgger
+psycopg2-binary
