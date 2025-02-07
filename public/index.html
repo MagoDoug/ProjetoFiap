@@ -64,22 +64,22 @@
         <h2>Status do Pedido</h2>
         <div class="status-box" id="status-confirmado">
             <div>📌 Pedido Confirmado</div>
-            <p class="descricao-detalhada"></p>
+            <p class="descricao-detalhada">Aguardando atualização...</p>
             <div class="time" id="time-confirmado">--:--</div>
         </div>
         <div class="status-box" id="status-preparacao">
             <div>👨‍🍳 Em Preparação</div>
-            <p class="descricao-detalhada"></p>
+            <p class="descricao-detalhada">Aguardando atualização...</p>
             <div class="time" id="time-preparacao">--:--</div>
         </div>
         <div class="status-box" id="status-transito">
             <div>🚚 Em Trânsito</div>
-            <p class="descricao-detalhada"></p>
+            <p class="descricao-detalhada">Aguardando atualização...</p>
             <div class="time" id="time-transito">--:--</div>
         </div>
         <div class="status-box" id="status-entregue">
             <div>✅ Entregue</div>
-            <p class="descricao-detalhada"></p>
+            <p class="descricao-detalhada">Aguardando atualização...</p>
             <div class="time" id="time-entregue">--:--</div>
         </div>
 
@@ -117,56 +117,54 @@
                 }
 
                 const data = await response.json();
-                console.log("🔍 Dados recebidos da API:", JSON.stringify(data, null, 2));
+                console.log("🔍 Dados recebidos da API:", data);
 
                 if (data.status) {
                     atualizarStatus(data.status, data.descricao_detalhada);
+                } else {
+                    console.warn("⚠️ Campo 'status' não encontrado na resposta da API.");
                 }
-                if (data.latitude && data.longitude) {
-                    marker.setLatLng([data.latitude, data.longitude]);
-                    map.setView([data.latitude, data.longitude], 18);
-                }
+
             } catch (error) {
                 console.error("❌ Erro ao buscar pedido:", error);
                 document.getElementById("status").textContent = "Erro ao carregar os dados do pedido!";
             }
-
-            function atualizarStatus(status, descricao) {
-                var statusBoxes = {
-                    "Pedido Confirmado": "status-confirmado",
-                    "Em Preparação": "status-preparacao",
-                    "Em Trânsito": "status-transito",
-                    "Entregue": "status-entregue"
-                };
-                var timeBoxes = {
-                    "Pedido Confirmado": "time-confirmado",
-                    "Em Preparação": "time-preparacao",
-                    "Em Trânsito": "time-transito",
-                    "Entregue": "time-entregue"
-                };
-
-                if (statusBoxes[status]) {
-                    var statusElement = document.getElementById(statusBoxes[status]);
-                    var timeElement = document.getElementById(timeBoxes[status]);
-                    var descricaoElement = statusElement.querySelector(".descricao-detalhada");
-
-                    if (statusElement) {
-                        statusElement.classList.add("active");
-                    }
-                    if (timeElement) {
-                        timeElement.textContent = new Date().toLocaleTimeString();
-                    }
-                    if (descricaoElement) {
-                        descricaoElement.textContent = descricao;
-                    } else {
-                        console.warn(`⚠️ Elemento .descricao-detalhada não encontrado para ${status}`);
-                    }
-                } else {
-                    console.warn("⚠️ Status não encontrado no dicionário:", status);
-                }
-            }
-
         });
+
+        function atualizarStatus(status, descricao) {
+            var statusBoxes = {
+                "Pedido Confirmado": "status-confirmado",
+                "Em Preparação": "status-preparacao",
+                "Em Trânsito": "status-transito",
+                "Entregue": "status-entregue"
+            };
+            var timeBoxes = {
+                "Pedido Confirmado": "time-confirmado",
+                "Em Preparação": "time-preparacao",
+                "Em Trânsito": "time-transito",
+                "Entregue": "time-entregue"
+            };
+
+            if (statusBoxes[status]) {
+                var statusElement = document.getElementById(statusBoxes[status]);
+                var timeElement = document.getElementById(timeBoxes[status]);
+                var descricaoElement = statusElement.querySelector(".descricao-detalhada");
+
+                if (statusElement) {
+                    statusElement.classList.add("active");
+                }
+                if (timeElement) {
+                    timeElement.textContent = new Date().toLocaleTimeString();
+                }
+                if (descricaoElement) {
+                    descricaoElement.textContent = descricao;
+                } else {
+                    console.warn(`⚠️ Elemento .descricao-detalhada não encontrado para ${status}`);
+                }
+            } else {
+                console.warn("⚠️ Status não encontrado no dicionário:", status);
+            }
+        }
     </script>
 </body>
 </html>
