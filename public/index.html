@@ -64,22 +64,22 @@
         <h2>Status do Pedido</h2>
         <div class="status-box" id="status-confirmado">
             <div>📌 Pedido Confirmado</div>
-            <p>Seu pedido foi recebido e está sendo processado</p>
+            <p class="descricao-detalhada">--</p>
             <div class="time" id="time-confirmado">--:--</div>
         </div>
         <div class="status-box" id="status-preparacao">
             <div>👨‍🍳 Em Preparação</div>
-            <p>Seu pedido está sendo preparado para envio</p>
+            <p class="descricao-detalhada">--</p>
             <div class="time" id="time-preparacao">--:--</div>
         </div>
         <div class="status-box" id="status-transito">
             <div>🚚 Em Trânsito</div>
-            <p>Seu pedido está a caminho</p>
+            <p class="descricao-detalhada">--</p>
             <div class="time" id="time-transito">--:--</div>
         </div>
         <div class="status-box" id="status-entregue">
             <div>✅ Entregue</div>
-            <p>Seu pedido foi entregue com sucesso</p>
+            <p class="descricao-detalhada">--</p>
             <div class="time" id="time-entregue">--:--</div>
         </div>
 
@@ -93,57 +93,45 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" defer></script>
     
     <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            var map = L.map('map').setView([-23.55052, -46.633308], 18);
-            
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-            }).addTo(map);
-            
-            var motoIcon = L.icon({
-                iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
-                iconSize: [40, 40]
-            });
-            
-            var marker = L.marker([-23.55052, -46.633308], { icon: motoIcon }).addTo(map);
-            
-            function connectWebSocket() {
-                var statusElement = document.getElementById("status");
-                var socket = io.connect("https://projetofiap.onrender.com", { transports: ["websocket"] });
-                
-                socket.on('connect', function() {
-                    statusElement.textContent = "Conectado com sucesso!";
-                });
-                
-                socket.on('status_update', function(data) {
-                    console.log("Status do pedido atualizado:", data);
-                    var statusBoxes = {
-                        "Pedido Confirmado": "status-confirmado",
-                        "Em Preparação": "status-preparacao",
-                        "Em Trânsito": "status-transito",
-                        "Entregue": "status-entregue"
-                    };
-                    var timeBoxes = {
-                        "Pedido Confirmado": "time-confirmado",
-                        "Em Preparação": "time-preparacao",
-                        "Em Trânsito": "time-transito",
-                        "Entregue": "time-entregue"
-                    };
-                    
-                    if (statusBoxes[data.status]) {
-                        document.getElementById(statusBoxes[data.status]).classList.add("active");
-                        document.getElementById(timeBoxes[data.status]).textContent = new Date().toLocaleTimeString();
-                    }
-                });
-                
-                socket.on('location_update', function(data) {
-                    console.log("Nova localização recebida:", data);
+        document.addEventListener("DOMContentLoaded", async function() {
+            var pedidoId = 1;
+            var apiUrl = `https://projetofiap.onrender.com/pedido/${pedidoId}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+
+                if (data.status) {
+                    atualizarStatus(data.status, data.descricao_detalhada);
+                }
+                if (data.latitude && data.longitude) {
                     marker.setLatLng([data.latitude, data.longitude]);
                     map.setView([data.latitude, data.longitude], 18);
-                });
+                }
+            } catch (error) {
+                console.error("Erro ao buscar pedido:", error);
             }
-            
-            connectWebSocket();
+
+            function atualizarStatus(status, descricao) {
+                var statusBoxes = {
+                    "Pedido Confirmado": "status-confirmado",
+                    "Em Preparação": "status-preparacao",
+                    "Em Trânsito": "status-transito",
+                    "Entregue": "status-entregue"
+                };
+                var timeBoxes = {
+                    "Pedido Confirmado": "time-confirmado",
+                    "Em Preparação": "time-preparacao",
+                    "Em Trânsito": "time-transito",
+                    "Entregue": "time-entregue"
+                };
+
+                if (statusBoxes[status]) {
+                    document.getElementById(statusBoxes[status]).classList.add("active");
+                    document.getElementById(timeBoxes[status]).textContent = new Date().toLocaleTimeString();
+                    document.getElementById(statusBoxes[status]).querySelector(".descricao-detalhada").textContent = descricao;
+                }
+            }
         });
     </script>
 </body>
