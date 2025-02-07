@@ -5,21 +5,31 @@ from flasgger import Swagger
 import psycopg2
 import requests
 import os
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 Swagger(app)  # Adiciona Swagger na API
 
 # Configuração do Banco de Dados PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL")  # Pega a URL do banco do Render
+DATABASE_URL = os.getenv("DATABASE_URL")  # Obtém a URL do banco do Render
 
 def get_db_connection():
-    """Cria uma conexão com o banco PostgreSQL"""
-    return psycopg2.connect(DATABASE_URL)
+    """Converte DATABASE_URL para um formato compatível e cria a conexão com PostgreSQL"""
+    result = urlparse(DATABASE_URL)
+
+    conn = psycopg2.connect(
+        dbname=result.path[1:],  # Remove a barra inicial do nome do banco
+        user=result.username,
+        password=result.password,
+        host=result.hostname,
+        port=result.port
+    )
+    return conn
 
 # URL do OpenStreetMap para geolocalização
 OSM_BASE_URL = "https://nominatim.openstreetmap.org/reverse"
-HEADERS = {"User-Agent": "MyTrackingApp/1.0 (magodoug@hotmail.com)"}  # Substitua pelo seu email
+HEADERS = {"User-Agent": "MyTrackingApp/1.0 (magodoug@hotmail.com)"}  # Substitua pelo seu e-mail
 
 # Criar tabelas no PostgreSQL
 def init_db():
