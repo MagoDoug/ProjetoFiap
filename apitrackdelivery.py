@@ -14,7 +14,10 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # Permite WebSocket de qualq
 Swagger(app)
 
 # Configuração do Banco de Dados PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL")  # Obtém a URL do banco do Render
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise ValueError("⚠️ ERRO: A variável DATABASE_URL não está definida!")
 
 def get_db_connection():
     """Converte DATABASE_URL para um formato compatível e cria a conexão com PostgreSQL"""
@@ -31,10 +34,10 @@ def get_db_connection():
 
 # URL do OpenStreetMap para geolocalização
 OSM_BASE_URL = "https://nominatim.openstreetmap.org/reverse"
-HEADERS = {"User-Agent": "MyTrackingApp/1.0 (magodoug@hotmail.com)"}  # Substitua pelo seu e-mail
+HEADERS = {"User-Agent": "MyTrackingApp/1.0 (magodoug@hotmail.com)"}  
 
-# Criar tabelas no PostgreSQL
 def init_db():
+    """Cria as tabelas no banco de dados se ainda não existirem"""
     conn = get_db_connection()
     cur = conn.cursor()
     
@@ -80,8 +83,11 @@ def update_location():
 
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("INSERT INTO entregadores (id, latitude, longitude) VALUES (%s, %s, %s) ON CONFLICT (id) DO UPDATE SET latitude = %s, longitude = %s",
-                (entregador_id, latitude, longitude, latitude, longitude))
+    cur.execute("""
+        INSERT INTO entregadores (id, latitude, longitude)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude
+    """, (entregador_id, latitude, longitude))
     conn.commit()
     cur.close()
     conn.close()
@@ -124,6 +130,13 @@ def update_status():
 
     conn = get_db_connection()
     cur = conn.cursor()
+
+    # Verifica se o pedido existe antes de atualizar
+    cur.execute("SELECT id FROM pedidos WHERE id = %s", (pedido_id,))
+    pedido = cur.fetchone()
+    if not pedido:
+        return jsonify({"error": "Pedido não encontrado"}), 404
+
     cur.execute("UPDATE pedidos SET status_id = %s WHERE id = %s", (status_id, pedido_id))
     conn.commit()
     cur.close()
@@ -139,9 +152,9 @@ def get_status(pedido_id):
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute('''
-        SELECT s.descricao, s.descricao_detalhada
+        SELECT COALESCE(s.descricao, 'Status não encontrado'), COALESCE(s.descricao_detalhada, 'Sem descrição detalhada')
         FROM pedidos p
-        JOIN status s ON p.status_id = s.id
+        LEFT JOIN status s ON p.status_id = s.id
         WHERE p.id = %s
     ''', (pedido_id,))
     row = cur.fetchone()
@@ -163,5 +176,5 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     init_db()
-    print("A API está rodando!")
+    print("✅ A API está rodando!")
     socketio.run(app, host='0.0.0.0', port=5000)
