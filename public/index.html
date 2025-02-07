@@ -64,22 +64,22 @@
         <h2>Status do Pedido</h2>
         <div class="status-box" id="status-confirmado">
             <div>📌 Pedido Confirmado</div>
-            <p class="descricao-detalhada">--</p>
+            <p class="descricao-detalhada"></p>
             <div class="time" id="time-confirmado">--:--</div>
         </div>
         <div class="status-box" id="status-preparacao">
             <div>👨‍🍳 Em Preparação</div>
-            <p class="descricao-detalhada">--</p>
+            <p class="descricao-detalhada"></p>
             <div class="time" id="time-preparacao">--:--</div>
         </div>
         <div class="status-box" id="status-transito">
             <div>🚚 Em Trânsito</div>
-            <p class="descricao-detalhada">--</p>
+            <p class="descricao-detalhada"></p>
             <div class="time" id="time-transito">--:--</div>
         </div>
         <div class="status-box" id="status-entregue">
             <div>✅ Entregue</div>
-            <p class="descricao-detalhada">--</p>
+            <p class="descricao-detalhada"></p>
             <div class="time" id="time-entregue">--:--</div>
         </div>
 
@@ -90,16 +90,34 @@
         </div>
     </div>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" defer></script>
-    
     <script>
         document.addEventListener("DOMContentLoaded", async function() {
             var pedidoId = 1;
-            var apiUrl = `https://projetofiap.onrender.com/pedido/${pedidoId}`;
+            var apiUrl = `https://projetofiap.onrender.com/get_status/${pedidoId}`;
+
+            // Inicializando o mapa
+            var map = L.map('map').setView([-23.55052, -46.633308], 18);
+
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            }).addTo(map);
+
+            var motoIcon = L.icon({
+                iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
+                iconSize: [40, 40]
+            });
+
+            var marker = L.marker([-23.55052, -46.633308], { icon: motoIcon }).addTo(map);
 
             try {
                 const response = await fetch(apiUrl);
+
+                if (!response.ok) {
+                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
+                }
+
                 const data = await response.json();
+                console.log("🔍 Dados recebidos da API:", data);
 
                 if (data.status) {
                     atualizarStatus(data.status, data.descricao_detalhada);
@@ -109,7 +127,8 @@
                     map.setView([data.latitude, data.longitude], 18);
                 }
             } catch (error) {
-                console.error("Erro ao buscar pedido:", error);
+                console.error("❌ Erro ao buscar pedido:", error);
+                document.getElementById("status").textContent = "Erro ao carregar os dados do pedido!";
             }
 
             function atualizarStatus(status, descricao) {
