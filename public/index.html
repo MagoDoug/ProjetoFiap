@@ -146,11 +146,26 @@
                 };
 
                 if (statusBoxes[status]) {
-                    document.getElementById(statusBoxes[status]).classList.add("active");
-                    document.getElementById(timeBoxes[status]).textContent = new Date().toLocaleTimeString();
-                    document.getElementById(statusBoxes[status]).querySelector(".descricao-detalhada").textContent = descricao;
+                    var statusElement = document.getElementById(statusBoxes[status]);
+                    var timeElement = document.getElementById(timeBoxes[status]);
+                    var descricaoElement = statusElement.querySelector(".descricao-detalhada");
+
+                    if (statusElement) {
+                        statusElement.classList.add("active");
+                    }
+                    if (timeElement) {
+                        timeElement.textContent = new Date().toLocaleTimeString();
+                    }
+                    if (descricaoElement) {
+                        descricaoElement.textContent = descricao;
+                    } else {
+                        console.warn(`⚠️ Elemento .descricao-detalhada não encontrado para ${status}`);
+                    }
+                } else {
+                    console.warn("⚠️ Status não encontrado no dicionário:", status);
                 }
             }
+
         });
     </script>
 </body>
