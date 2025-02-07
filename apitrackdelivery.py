@@ -7,10 +7,6 @@ Original file is located at
     https://colab.research.google.com/drive/1xZk26yBpo5vbId_dDsfekWmDgT5Fpvxf
 """
 
-!pip install flask flask-socketio eventlet requests
-!pip install flasgger
-
-
 from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flasgger import Swagger
