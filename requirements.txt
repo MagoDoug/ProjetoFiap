@@ -4,3 +4,4 @@ eventlet
 requests
 flasgger
 psycopg2-binary
+flask-cors

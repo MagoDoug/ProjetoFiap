@@ -6,10 +6,12 @@ import psycopg2
 import requests
 import os
 from urllib.parse import urlparse
+from flask_cors import CORS  # Importa a biblioteca CORS
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
-Swagger(app)  # Adiciona Swagger na API
+CORS(app)  # Habilita CORS para toda a API
+socketio = SocketIO(app, cors_allowed_origins="*")  # Permite WebSocket de qualquer origem
+Swagger(app)
 
 # Configuração do Banco de Dados PostgreSQL
 DATABASE_URL = os.getenv("DATABASE_URL")  # Obtém a URL do banco do Render
