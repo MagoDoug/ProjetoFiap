@@ -148,7 +148,7 @@
             if (statusBoxes[status]) {
                 var statusElement = document.getElementById(statusBoxes[status]);
                 var timeElement = document.getElementById(timeBoxes[status]);
-                var descricaoElement = statusElement.querySelector(".descricao-detalhada");
+                var descricaoElement = statusElement ? statusElement.querySelector(".descricao-detalhada") : null;
 
                 if (statusElement) {
                     statusElement.classList.add("active");
