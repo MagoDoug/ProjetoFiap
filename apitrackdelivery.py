@@ -6,11 +6,10 @@ import psycopg2
 import os
 from urllib.parse import urlparse
 from flask_cors import CORS
-from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  
-socketio = SocketIO(app, cors_allowed_origins="*")  
+CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 Swagger(app)
 
 # Configuração do Banco de Dados PostgreSQL
@@ -109,6 +108,33 @@ def update_status():
     return jsonify({"message": "Status atualizado e registrado no histórico"})
 
 
+@app.route('/update_location', methods=['POST'])
+def update_location():
+    """Atualiza a localização do entregador e emite WebSocket"""
+    data = request.get_json()
+    entregador_id = data.get('id')
+    latitude = data.get('latitude')
+    longitude = data.get('longitude')
+
+    if not entregador_id or latitude is None or longitude is None:
+        return jsonify({'error': 'Dados inválidos'}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO entregadores (id, latitude, longitude)
+        VALUES (%s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude
+    """, (entregador_id, latitude, longitude))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    socketio.emit('location_update', {'id': entregador_id, 'latitude': latitude, 'longitude': longitude})
+
+    return jsonify({'message': 'Localização atualizada e enviada via WebSocket'})
+
+
 @app.route('/get_status_history/<pedido_id>', methods=['GET'])
 def get_status_history(pedido_id):
     """Obtém o histórico de status de um pedido"""
@@ -140,5 +166,5 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     init_db()
-    print("✅ A API está rodando com WebSockets e histórico de status!")
+    print("✅ A API está rodando com WebSockets e atualização de localização!")
     socketio.run(app, host='0.0.0.0', port=5000)
