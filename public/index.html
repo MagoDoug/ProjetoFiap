@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo="> <!-- Corrige erro de favicon -->
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -161,8 +162,12 @@
             const historico = await response.json();
 
             document.querySelectorAll(".status-box").forEach(box => box.classList.remove("active"));
+
             historico.forEach(item => {
-                document.getElementById(`status-${item.status.replace(" ", "").toLowerCase()}`).classList.add("active");
+                const statusElement = document.getElementById(`status-${item.status.replace(" ", "").toLowerCase()}`);
+                if (statusElement) {
+                    statusElement.classList.add("active");
+                }
             });
 
             statusAtual = historico[historico.length - 1]?.status_id || 1;
