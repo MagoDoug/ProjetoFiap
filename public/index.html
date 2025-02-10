@@ -115,11 +115,16 @@
         var statusAtual = null;
 
         document.getElementById("btnCriarPedido").addEventListener("click", async function() {
-            const response = await fetch("https://projetofiap.onrender.com/create_pedido", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ latitude: -23.55052, longitude: -46.633308 }) });
+            const response = await fetch("https://projetofiap.onrender.com/create_pedido", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ latitude: -23.55052, longitude: -46.633308 }) 
+            });
             const data = await response.json();
             pedidoId = data.pedido_id;
             document.getElementById("pedidoCriado").innerText = `Pedido Criado: ${pedidoId}`;
             document.getElementById("pedidoIdInput").value = pedidoId;
+            atualizarHistorico();
         });
 
         document.getElementById("btnConsultarPedido").addEventListener("click", async function() {
@@ -130,34 +135,45 @@
 
         document.getElementById("btnAlterarStatus").addEventListener("click", async function() {
             if (!pedidoId) return alert("Consulte um pedido primeiro.");
-            const response = await fetch("https://projetofiap.onrender.com/update_status", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido_id: pedidoId, status_id: statusAtual + 1 }) });
+            const response = await fetch("https://projetofiap.onrender.com/update_status", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ pedido_id: pedidoId, status_id: statusAtual + 1 }) 
+            });
             atualizarHistorico();
         });
 
         document.getElementById("btnSimularEntrega").addEventListener("click", async function() {
             if (!pedidoId) return alert("Consulte um pedido primeiro.");
-            const response = await fetch("https://projetofiap.onrender.com/assign_entregador", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido_id: pedidoId, entregador_id: "123", latitude: -23.55052, longitude: -46.633308 }) });
+            await fetch("https://projetofiap.onrender.com/assign_entregador", { 
+                method: "POST", 
+                headers: { "Content-Type": "application/json" }, 
+                body: JSON.stringify({ pedido_id: pedidoId, entregador_id: "123", latitude: -23.55052, longitude: -46.633308 }) 
+            });
             simularEntrega();
         });
 
         async function atualizarHistorico() {
             const response = await fetch(`https://projetofiap.onrender.com/get_status_history/${pedidoId}`);
             const historico = await response.json();
-            
+
             document.querySelectorAll(".status-box").forEach(box => box.classList.remove("active"));
             historico.forEach(item => {
                 document.getElementById(`status-${item.status.replace(" ", "").toLowerCase()}`).classList.add("active");
             });
 
             statusAtual = historico[historico.length - 1].status_id;
-
             document.getElementById("btnSimularEntrega").disabled = statusAtual !== 3;
         }
 
         async function simularEntrega() {
             const trajeto = [[-23.55052, -46.633308], [-23.55100, -46.633500], [-23.55150, -46.633700]];
             for (const [lat, lon] of trajeto) {
-                await fetch("https://projetofiap.onrender.com/update_location", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: "123", latitude: lat, longitude: lon }) });
+                await fetch("https://projetofiap.onrender.com/update_location", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" }, 
+                    body: JSON.stringify({ id: "123", latitude: lat, longitude: lon }) 
+                });
                 await new Promise(resolve => setTimeout(resolve, 2000));
             }
         }
