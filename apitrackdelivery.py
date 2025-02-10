@@ -111,6 +111,30 @@ def create_pedido():
 
     return jsonify({"message": "Pedido criado com sucesso", "pedido_id": pedido_id})
 
+@app.route('/get_status_history/<int:pedido_id>', methods=['GET'])
+def get_status_history(pedido_id):
+    """Retorna o histórico de status de um pedido específico"""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT s.id, s.descricao 
+        FROM historico_status hs
+        JOIN status s ON hs.status_id = s.id
+        WHERE hs.pedido_id = %s
+        ORDER BY hs.data_hora ASC
+    """, (pedido_id,))
+
+    historico = [{"status_id": row[0], "status": row[1]} for row in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+
+    if not historico:
+        return jsonify({"error": "Pedido não encontrado ou sem histórico"}), 404
+
+    return jsonify(historico)
+
 @app.route('/assign_entregador', methods=['POST'])
 def assign_entregador():
     """Atribui um entregador ao pedido e registra a localização do restaurante"""
