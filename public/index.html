@@ -99,21 +99,6 @@
         var socket = io("https://projetofiap.onrender.com");
         var pedidoId = null;
         var statusAtual = null;
-        var map = null;
-        var marker = null;
-
-        document.getElementById("btnCriarPedido").addEventListener("click", async function() {
-            const response = await fetch("https://projetofiap.onrender.com/create_pedido", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ latitude: -23.55052, longitude: -46.633308 })
-            });
-            const data = await response.json();
-            pedidoId = data.pedido_id;
-            document.getElementById("pedidoCriado").innerText = `Pedido Criado: ${pedidoId}`;
-            document.getElementById("pedidoIdInput").value = pedidoId;
-            atualizarHistorico();
-        });
 
         async function atualizarHistorico() {
             let pedidoInput = document.getElementById("pedidoIdInput").value.trim();
@@ -144,7 +129,23 @@
             }
         }
 
-        socket.on("status_update", atualizarHistorico);
+        document.getElementById("btnConsultarPedido").addEventListener("click", atualizarHistorico);
+
+        document.getElementById("btnAlterarStatus").addEventListener("click", async function() {
+            if (!pedidoId) {
+                console.error("Erro: Nenhum pedido ID informado.");
+                return;
+            }
+            const novoStatus = statusAtual + 1;
+            if (novoStatus > 4) return alert("O pedido já foi entregue!");
+            
+            await fetch("https://projetofiap.onrender.com/update_status", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pedido_id: pedidoId, status_id: novoStatus })
+            });
+            atualizarHistorico();
+        });
     </script>
 </body>
 </html>
