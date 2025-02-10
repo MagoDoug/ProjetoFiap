@@ -14,23 +14,14 @@
             background-color: #f8f9fa;
             margin: 0;
             padding: 20px;
-            display: flex;
-            justify-content: space-between;
         }
         .container {
-            width: 55%;
+            max-width: 600px;
+            margin: auto;
             background: white;
             padding: 20px;
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
-        .simulation-container {
-            width: 40%;
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
         }
         .status-box {
             padding: 15px;
@@ -44,108 +35,135 @@
             border-left-color: red;
             opacity: 1;
         }
+        .status-box div.time {
+            font-size: 12px;
+            color: gray;
+            margin-top: 5px;
+        }
         .map-container {
             margin-top: 20px;
             background: #e9ecef;
             padding: 20px;
             border-radius: 10px;
-            display: none;
+            display: none; /* 🔹 O mapa começa oculto */
         }
         #map {
             height: 300px;
             width: 100%;
-        }
-        button {
-            background-color: red;
-            color: white;
-            padding: 10px;
-            border: none;
-            cursor: pointer;
-            width: 100%;
-            margin: 5px 0;
-            font-size: 16px;
-        }
-        button:disabled {
-            background-color: gray;
-            cursor: not-allowed;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Status do Pedido</h2>
-        <div class="status-box" id="status-confirmado">📌 Pedido Confirmado</div>
-        <div class="status-box" id="status-preparacao">👨‍🍳 Em Preparação</div>
-        <div class="status-box" id="status-transito">🚚 Em Trânsito</div>
-        <div class="status-box" id="status-entregue">✅ Entregue</div>
-        
+        <div class="status-box" id="status-confirmado">
+            <div>📌 Pedido Confirmado</div>
+            <p class="descricao-detalhada">Seu pedido foi recebido e está sendo processado</p>
+            <div class="time" id="time-confirmado">--:--</div>
+        </div>
+        <div class="status-box" id="status-preparacao">
+            <div>👨‍🍳 Em Preparação</div>
+            <p class="descricao-detalhada">Seu pedido está sendo preparado para envio</p>
+            <div class="time" id="time-preparacao">--:--</div>
+        </div>
+        <div class="status-box" id="status-transito">
+            <div>🚚 Em Trânsito</div>
+            <p class="descricao-detalhada">Seu pedido está a caminho</p>
+            <div class="time" id="time-transito">--:--</div>
+        </div>
+        <div class="status-box" id="status-entregue">
+            <div>✅ Entregue</div>
+            <p class="descricao-detalhada">Seu pedido foi entregue com sucesso</p>
+            <div class="time" id="time-entregue">--:--</div>
+        </div>
+
         <div class="map-container" id="map-container">
             <h3>Localização Atual</h3>
             <div id="map"></div>
         </div>
     </div>
 
-    <div class="simulation-container">
-        <h2>Simulação</h2>
-        <button id="btnCriarPedido">Criar Pedido</button>
-        <p id="pedidoCriado"></p>
-        <input type="text" id="pedidoIdInput" placeholder="Informe o número do pedido">
-        <button id="btnConsultarPedido">Consultar Pedido</button>
-        <button id="btnAlterarStatus">Alterar Status</button>
-        <button id="btnSimularEntrega" disabled>Simular Entrega</button>
-    </div>
-
     <script>
         var socket = io("https://projetofiap.onrender.com");
-        var pedidoId = null;
-        var statusAtual = null;
+        var pedidoId = 1; // Alterar conforme necessário
+        var map, marker;
+        var mapInitialized = false; // 🔹 Controle para iniciar o mapa apenas uma vez
 
         async function atualizarHistorico() {
-            let pedidoInput = document.getElementById("pedidoIdInput").value.trim();
-            if (!pedidoInput && pedidoId) {
-                pedidoInput = pedidoId;
-            }
-            if (!pedidoInput) {
-                console.error("Erro: Nenhum pedido ID informado.");
-                return;
-            }
             try {
-                const response = await fetch(`https://projetofiap.onrender.com/get_status_history/${pedidoInput}`);
-                if (!response.ok) {
-                    console.error("Erro ao buscar histórico do pedido:", response.statusText);
-                    return;
-                }
+                const response = await fetch(`https://projetofiap.onrender.com/get_status_history/${pedidoId}`);
                 const historico = await response.json();
-                document.querySelectorAll(".status-box").forEach(box => box.classList.remove("active"));
+
+                var statusBoxes = {
+                    "Pedido Confirmado": "status-confirmado",
+                    "Em Preparação": "status-preparacao",
+                    "Em Trânsito": "status-transito",
+                    "Entregue": "status-entregue"
+                };
+
                 historico.forEach(item => {
-                    const statusElement = document.getElementById(`status-${item.status.replace(" ", "").toLowerCase()}`);
-                    if (statusElement) {
+                    if (statusBoxes[item.status]) {
+                        let statusElement = document.getElementById(statusBoxes[item.status]);
+                        let timeElement = statusElement.querySelector(".time");
+
                         statusElement.classList.add("active");
+                        timeElement.textContent = item.data_hora;
                     }
                 });
-                statusAtual = historico[historico.length - 1]?.status_id || 1;
+
+                // 🔹 Se o status atual for "Em Trânsito", ativa o mapa
+                if (historico.some(item => item.status === "Em Trânsito")) {
+                    ativarMapa();
+                }
+
             } catch (error) {
-                console.error("Erro ao buscar histórico do pedido:", error);
+                console.error("❌ Erro ao buscar histórico de status:", error);
             }
         }
 
-        document.getElementById("btnConsultarPedido").addEventListener("click", atualizarHistorico);
+        async function ativarMapa() {
+            if (!mapInitialized) {
+                try {
+                    const response = await fetch(`https://projetofiap.onrender.com/get_last_location`);
+                    const data = await response.json();
 
-        document.getElementById("btnAlterarStatus").addEventListener("click", async function() {
-            if (!pedidoId) {
-                console.error("Erro: Nenhum pedido ID informado.");
-                return;
+                    document.getElementById("map-container").style.display = "block"; // 🔹 Exibe o mapa
+
+                    map = L.map('map').setView([data.latitude, data.longitude], 18);
+
+                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+                        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+                    }).addTo(map);
+
+                    var motoIcon = L.icon({
+                        iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
+                        iconSize: [40, 40]
+                    });
+
+                    marker = L.marker([data.latitude, data.longitude], { icon: motoIcon }).addTo(map);
+
+                    mapInitialized = true;
+                } catch (error) {
+                    console.error("❌ Erro ao buscar localização inicial:", error);
+                }
             }
-            const novoStatus = statusAtual + 1;
-            if (novoStatus > 4) return alert("O pedido já foi entregue!");
-            
-            await fetch("https://projetofiap.onrender.com/update_status", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ pedido_id: pedidoId, status_id: novoStatus })
-            });
+        }
+
+        socket.on("status_update", function(data) {
+            console.log("🔄 Status atualizado:", data);
             atualizarHistorico();
         });
+
+        socket.on("location_update", function(data) {
+            console.log("📍 Nova localização:", data);
+
+            if (mapInitialized) {
+                marker.setLatLng([data.latitude, data.longitude]);
+                map.setView([data.latitude, data.longitude], 18);
+            }
+        });
+
+        atualizarHistorico();
     </script>
 </body>
 </html>
