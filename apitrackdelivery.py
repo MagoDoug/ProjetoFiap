@@ -6,6 +6,8 @@ import psycopg2
 import os
 from urllib.parse import urlparse
 from flask_cors import CORS
+import pytz
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -20,7 +22,7 @@ if not DATABASE_URL:
 
 def get_db_connection():
     result = urlparse(DATABASE_URL)
-    return psycopg2.connect(
+    conn = psycopg2.connect(
         dbname=result.path[1:],  
         user=result.username,
         password=result.password,
@@ -28,25 +30,24 @@ def get_db_connection():
         port=result.port
     )
 
+    # Define o timezone para São Paulo
+    cur = conn.cursor()
+    cur.execute("SET timezone TO 'America/Sao_Paulo';")
+    cur.close()
+
+    return conn
+
 def init_db():
     """Criação das tabelas no banco de dados"""
     conn = get_db_connection()
     cur = conn.cursor()
     
     cur.execute('''
-        CREATE TABLE IF NOT EXISTS entregadores (
-            id TEXT PRIMARY KEY,
-            latitude REAL,
-            longitude REAL
-        )
-    ''')
-
-    cur.execute('''
         CREATE TABLE IF NOT EXISTS pedidos (
             id SERIAL PRIMARY KEY,
-            status_id INT NOT NULL,
-            latitude FLOAT,
-            longitude FLOAT
+            status_id INT NOT NULL DEFAULT 1, -- Começa com "Pedido Confirmado"
+            latitude FLOAT NOT NULL,
+            longitude FLOAT NOT NULL
         )
     ''')
 
@@ -72,6 +73,42 @@ def init_db():
     conn.commit()
     cur.close()
     conn.close()
+
+@app.route('/create_pedido', methods=['POST'])
+def create_pedido():
+    """Cria um novo pedido com localização inicial e status 'Pedido Confirmado'"""
+    data = request.json
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+
+    if latitude is None or longitude is None:
+        return jsonify({"error": "Latitude e Longitude são obrigatórios"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Insere o novo pedido e define o status como "Pedido Confirmado"
+    cur.execute("""
+        INSERT INTO pedidos (status_id, latitude, longitude) 
+        VALUES (1, %s, %s) RETURNING id
+    """, (latitude, longitude))
+
+    pedido_id = cur.fetchone()[0]
+
+    # Adiciona ao histórico de status
+    cur.execute("""
+        INSERT INTO historico_status (pedido_id, status_id) 
+        VALUES (%s, 1)
+    """, (pedido_id,))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Emite evento WebSocket para atualização em tempo real
+    socketio.emit("status_update", {"pedido_id": pedido_id, "status_id": 1})
+
+    return jsonify({"message": "Pedido criado com sucesso", "pedido_id": pedido_id})
 
 @app.route('/update_status', methods=['POST'])
 def update_status():
@@ -107,7 +144,6 @@ def update_status():
 
     return jsonify({"message": "Status atualizado e registrado no histórico"})
 
-
 @app.route('/update_location', methods=['POST'])
 def update_location():
     """Atualiza a localização do entregador e emite WebSocket"""
@@ -134,7 +170,6 @@ def update_location():
 
     return jsonify({'message': 'Localização atualizada e enviada via WebSocket'})
 
-
 @app.route('/get_status_history/<pedido_id>', methods=['GET'])
 def get_status_history(pedido_id):
     """Obtém o histórico de status de um pedido"""
@@ -149,7 +184,13 @@ def get_status_history(pedido_id):
         ORDER BY h.data_hora ASC
     ''', (pedido_id,))
 
-    historico = [{"status": row[0], "data_hora": row[1].strftime("%d/%m/%Y %H:%M:%S")} for row in cur.fetchall()]
+    fuso_sp = pytz.timezone("America/Sao_Paulo")
+    
+    historico = []
+    for row in cur.fetchall():
+        data_utc = row[1].replace(tzinfo=pytz.utc)
+        data_sp = data_utc.astimezone(fuso_sp)
+        historico.append({"status": row[0], "data_hora": data_sp.strftime("%d/%m/%Y %H:%M:%S")})
     
     cur.close()
     conn.close()
@@ -166,5 +207,5 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     init_db()
-    print("✅ A API está rodando com WebSockets e atualização de localização!")
+    print("✅ A API está rodando com WebSockets e criação automática de pedidos!")
     socketio.run(app, host='0.0.0.0', port=5000)
