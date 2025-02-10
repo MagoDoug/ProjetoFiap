@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Status do Pedido</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -21,150 +20,46 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-        .status-box {
-            padding: 15px;
-            border-left: 4px solid red;
-            margin-bottom: 15px;
-            display: flex;
-            flex-direction: column;
-            opacity: 0.5;
-        }
-        .status-box.active {
-            border-left-color: red;
-            opacity: 1;
-        }
-        .status-box.active div:first-child {
-            font-weight: bold;
-        }
-        .status-box div.time {
-            font-size: 12px;
-            color: gray;
-            margin-top: 5px;
-        }
-        .map-container {
+        #historico-status {
             margin-top: 20px;
-            background: #e9ecef;
-            padding: 20px;
-            border-radius: 10px;
-        }
-        #map {
-            height: 300px;
-            width: 100%;
-        }
-        #status {
-            font-weight: bold;
-            color: red;
-            display: block;
-            margin-top: 10px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Status do Pedido</h2>
-        <div class="status-box" id="status-confirmado">
-            <div>📌 Pedido Confirmado</div>
-            <p class="descricao-detalhada">Aguardando atualização...</p>
-            <div class="time" id="time-confirmado">--:--</div>
-        </div>
-        <div class="status-box" id="status-preparacao">
-            <div>👨‍🍳 Em Preparação</div>
-            <p class="descricao-detalhada">Aguardando atualização...</p>
-            <div class="time" id="time-preparacao">--:--</div>
-        </div>
-        <div class="status-box" id="status-transito">
-            <div>🚚 Em Trânsito</div>
-            <p class="descricao-detalhada">Aguardando atualização...</p>
-            <div class="time" id="time-transito">--:--</div>
-        </div>
-        <div class="status-box" id="status-entregue">
-            <div>✅ Entregue</div>
-            <p class="descricao-detalhada">Aguardando atualização...</p>
-            <div class="time" id="time-entregue">--:--</div>
-        </div>
+        <div id="status-atual">Aguardando atualização...</div>
 
-        <div class="map-container">
-            <h3>Localização Atual</h3>
-            <div id="map"></div>
-            <span id="status"></span>
-        </div>
+        <h3>Histórico de Status</h3>
+        <ul id="historico-status"></ul>
     </div>
-    
+
     <script>
-        document.addEventListener("DOMContentLoaded", async function() {
-            var pedidoId = 1;
-            var apiUrl = `https://projetofiap.onrender.com/get_status/${pedidoId}`;
+        var socket = io("https://projetofiap.onrender.com");
+        var pedidoId = 1;
 
-            // Inicializando o mapa
-            var map = L.map('map').setView([-23.55052, -46.633308], 18);
-
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-            }).addTo(map);
-
-            var motoIcon = L.icon({
-                iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
-                iconSize: [40, 40]
-            });
-
-            var marker = L.marker([-23.55052, -46.633308], { icon: motoIcon }).addTo(map);
-
-            try {
-                const response = await fetch(apiUrl);
-
-                if (!response.ok) {
-                    throw new Error(`Erro ${response.status}: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                console.log("🔍 Dados recebidos da API:", data);
-
-                if (data && data.status) {
-                    atualizarStatus(data.status, data.descricao_detalhada);
-                } else {
-                    console.warn("⚠️ Campo 'status' não encontrado na resposta da API.");
-                }
-
-            } catch (error) {
-                console.error("❌ Erro ao buscar pedido:", error);
-                document.getElementById("status").textContent = "Erro ao carregar os dados do pedido!";
-            }
+        socket.on("status_update", function(data) {
+            console.log("🔄 Status atualizado:", data);
+            atualizarHistorico();
         });
 
-        function atualizarStatus(status, descricao) {
-            var statusBoxes = {
-                "Pedido Confirmado": "status-confirmado",
-                "Em Preparação": "status-preparacao",
-                "Em Trânsito": "status-transito",
-                "Entregue": "status-entregue"
-            };
-            var timeBoxes = {
-                "Pedido Confirmado": "time-confirmado",
-                "Em Preparação": "time-preparacao",
-                "Em Trânsito": "time-transito",
-                "Entregue": "time-entregue"
-            };
+        async function atualizarHistorico() {
+            try {
+                const response = await fetch(`https://projetofiap.onrender.com/get_status_history/${pedidoId}`);
+                const historico = await response.json();
 
-            if (statusBoxes[status]) {
-                var statusElement = document.getElementById(statusBoxes[status]);
-                var timeElement = document.getElementById(timeBoxes[status]);
-                var descricaoElement = statusElement ? statusElement.querySelector(".descricao-detalhada") : null;
+                let historicoHtml = "";
+                historico.forEach(item => {
+                    historicoHtml += `<li>${item.status} - ${item.data_hora}</li>`;
+                });
 
-                if (statusElement) {
-                    statusElement.classList.add("active");
-                }
-                if (timeElement) {
-                    timeElement.textContent = new Date().toLocaleTimeString();
-                }
-                if (descricaoElement) {
-                    descricaoElement.textContent = descricao || "Descrição não disponível";
-                } else {
-                    console.warn(`⚠️ Elemento .descricao-detalhada não encontrado para ${status}`);
-                }
-            } else {
-                console.warn("⚠️ Status não encontrado no dicionário:", status);
+                document.getElementById("historico-status").innerHTML = historicoHtml;
+            } catch (error) {
+                console.error("❌ Erro ao buscar histórico de status:", error);
             }
         }
+
+        atualizarHistorico();
     </script>
 </body>
 </html>

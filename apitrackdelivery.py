@@ -3,14 +3,14 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO, emit
 from flasgger import Swagger
 import psycopg2
-import requests
 import os
 from urllib.parse import urlparse
-from flask_cors import CORS  # Importa a biblioteca CORS
+from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
-CORS(app)  # Habilita CORS para toda a API
-socketio = SocketIO(app, cors_allowed_origins="*")  # Permite WebSocket de qualquer origem
+CORS(app)  
+socketio = SocketIO(app, cors_allowed_origins="*")  
 Swagger(app)
 
 # Configuração do Banco de Dados PostgreSQL
@@ -20,24 +20,17 @@ if not DATABASE_URL:
     raise ValueError("⚠️ ERRO: A variável DATABASE_URL não está definida!")
 
 def get_db_connection():
-    """Converte DATABASE_URL para um formato compatível e cria a conexão com PostgreSQL"""
     result = urlparse(DATABASE_URL)
-
-    conn = psycopg2.connect(
-        dbname=result.path[1:],  # Remove a barra inicial do nome do banco
+    return psycopg2.connect(
+        dbname=result.path[1:],  
         user=result.username,
         password=result.password,
         host=result.hostname,
         port=result.port
     )
-    return conn
-
-# URL do OpenStreetMap para geolocalização
-OSM_BASE_URL = "https://nominatim.openstreetmap.org/reverse"
-HEADERS = {"User-Agent": "MyTrackingApp/1.0 (magodoug@hotmail.com)"}  
 
 def init_db():
-    """Cria as tabelas no banco de dados se ainda não existirem"""
+    """Criação das tabelas no banco de dados"""
     conn = get_db_connection()
     cur = conn.cursor()
     
@@ -48,7 +41,7 @@ def init_db():
             longitude REAL
         )
     ''')
-    
+
     cur.execute('''
         CREATE TABLE IF NOT EXISTS pedidos (
             id SERIAL PRIMARY KEY,
@@ -66,62 +59,24 @@ def init_db():
         )
     ''')
 
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS historico_status (
+            id SERIAL PRIMARY KEY,
+            pedido_id INT NOT NULL,
+            status_id INT NOT NULL,
+            data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (pedido_id) REFERENCES pedidos(id),
+            FOREIGN KEY (status_id) REFERENCES status(id)
+        )
+    ''')
+
     conn.commit()
     cur.close()
     conn.close()
-
-@app.route('/update_location', methods=['POST'])
-def update_location():
-    """Atualiza a localização do entregador"""
-    data = request.get_json()
-    entregador_id = data.get('id')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-
-    if not entregador_id or latitude is None or longitude is None:
-        return jsonify({'error': 'Dados inválidos'}), 400
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO entregadores (id, latitude, longitude)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude
-    """, (entregador_id, latitude, longitude))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    socketio.emit('location_update', {'id': entregador_id, 'latitude': latitude, 'longitude': longitude})
-
-    return jsonify({'message': 'Localização atualizada com sucesso'})
-
-@app.route('/get_location/<entregador_id>', methods=['GET'])
-def get_location(entregador_id):
-    """Obtém a localização do entregador"""
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT latitude, longitude FROM entregadores WHERE id = %s", (entregador_id,))
-    row = cur.fetchone()
-    cur.close()
-    conn.close()
-
-    if row:
-        latitude, longitude = row
-        try:
-            response = requests.get(OSM_BASE_URL, params={"lat": latitude, "lon": longitude, "format": "json"}, headers=HEADERS)
-            address = response.json().get("display_name", "Endereço não encontrado") if response.status_code == 200 else "Erro ao obter endereço"
-        except requests.exceptions.RequestException:
-            address = "Falha na comunicação com OpenStreetMap"
-
-        #return jsonify({'id': entregador_id, 'latitude': latitude, 'longitude': longitude, 'address': address})
-        return jsonify({'id': entregador_id, 'latitude': latitude, 'longitude': longitude})
-
-    return jsonify({'error': 'Entregador não encontrado'}), 404
 
 @app.route('/update_status', methods=['POST'])
 def update_status():
-    """Atualiza o status de um pedido"""
+    """Atualiza o status de um pedido e salva no histórico"""
     data = request.json
     pedido_id = data.get("pedido_id")
     status_id = data.get("status_id")
@@ -132,40 +87,48 @@ def update_status():
     conn = get_db_connection()
     cur = conn.cursor()
 
-    # Verifica se o pedido existe antes de atualizar
+    # Verifica se o pedido existe
     cur.execute("SELECT id FROM pedidos WHERE id = %s", (pedido_id,))
     pedido = cur.fetchone()
+
     if not pedido:
         return jsonify({"error": "Pedido não encontrado"}), 404
 
+    # Atualiza o status do pedido
     cur.execute("UPDATE pedidos SET status_id = %s WHERE id = %s", (status_id, pedido_id))
+
+    # Salva no histórico
+    cur.execute("INSERT INTO historico_status (pedido_id, status_id) VALUES (%s, %s)", (pedido_id, status_id))
+
     conn.commit()
     cur.close()
     conn.close()
 
     socketio.emit("status_update", {"pedido_id": pedido_id, "status_id": status_id})
 
-    return jsonify({"message": "Status atualizado com sucesso!"})
+    return jsonify({"message": "Status atualizado e registrado no histórico"})
 
-@app.route('/get_status/<pedido_id>', methods=['GET'])
-def get_status(pedido_id):
-    """Obtém o status do pedido"""
+
+@app.route('/get_status_history/<pedido_id>', methods=['GET'])
+def get_status_history(pedido_id):
+    """Obtém o histórico de status de um pedido"""
     conn = get_db_connection()
     cur = conn.cursor()
+
     cur.execute('''
-        SELECT COALESCE(s.descricao, 'Status não encontrado'), COALESCE(s.descricao_detalhada, 'Sem descrição detalhada')
-        FROM pedidos p
-        LEFT JOIN status s ON p.status_id = s.id
-        WHERE p.id = %s
+        SELECT s.descricao, h.data_hora 
+        FROM historico_status h
+        JOIN status s ON h.status_id = s.id
+        WHERE h.pedido_id = %s
+        ORDER BY h.data_hora ASC
     ''', (pedido_id,))
-    row = cur.fetchone()
+
+    historico = [{"status": row[0], "data_hora": row[1].strftime("%d/%m/%Y %H:%M:%S")} for row in cur.fetchall()]
+    
     cur.close()
     conn.close()
 
-    if row:
-        return jsonify({"pedido_id": pedido_id, "status": row[0], "descricao_detalhada": row[1]})
-    
-    return jsonify({"error": "Pedido não encontrado"}), 404
+    return jsonify(historico)
 
 @socketio.on('connect')
 def handle_connect():
@@ -177,5 +140,5 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     init_db()
-    print("✅ A API está rodando!")
+    print("✅ A API está rodando com WebSockets e histórico de status!")
     socketio.run(app, host='0.0.0.0', port=5000)
