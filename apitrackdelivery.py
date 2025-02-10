@@ -47,7 +47,8 @@ def init_db():
             id SERIAL PRIMARY KEY,
             status_id INT NOT NULL DEFAULT 1, -- Começa com "Pedido Confirmado"
             latitude FLOAT NOT NULL,
-            longitude FLOAT NOT NULL
+            longitude FLOAT NOT NULL,
+            entregador_id TEXT
         )
     ''')
 
@@ -110,6 +111,50 @@ def create_pedido():
 
     return jsonify({"message": "Pedido criado com sucesso", "pedido_id": pedido_id})
 
+@app.route('/assign_entregador', methods=['POST'])
+def assign_entregador():
+    """Atribui um entregador ao pedido e registra a localização do restaurante"""
+    data = request.json
+    pedido_id = data.get("pedido_id")
+    entregador_id = data.get("entregador_id")
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+
+    if not pedido_id or not entregador_id or latitude is None or longitude is None:
+        return jsonify({"error": "Pedido ID, Entregador ID, Latitude e Longitude são obrigatórios"}), 400
+
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    # Verifica se o pedido existe
+    cur.execute("SELECT id FROM pedidos WHERE id = %s", (pedido_id,))
+    pedido = cur.fetchone()
+
+    if not pedido:
+        return jsonify({"error": "Pedido não encontrado"}), 404
+
+    # Atualiza o pedido com o entregador e localização do restaurante
+    cur.execute("""
+        UPDATE pedidos 
+        SET entregador_id = %s, latitude = %s, longitude = %s, status_id = 2
+        WHERE id = %s
+    """, (entregador_id, latitude, longitude, pedido_id))
+
+    # Salva no histórico de status como "Em Preparação"
+    cur.execute("""
+        INSERT INTO historico_status (pedido_id, status_id) 
+        VALUES (%s, 2)
+    """, (pedido_id,))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    # Emite evento WebSocket para atualização em tempo real
+    socketio.emit("status_update", {"pedido_id": pedido_id, "status_id": 2, "entregador_id": entregador_id})
+
+    return jsonify({"message": "Entregador atribuído ao pedido e status atualizado para 'Em Preparação'"})
+
 @app.route('/update_status', methods=['POST'])
 def update_status():
     """Atualiza o status de um pedido e salva no histórico"""
@@ -122,13 +167,6 @@ def update_status():
 
     conn = get_db_connection()
     cur = conn.cursor()
-
-    # Verifica se o pedido existe
-    cur.execute("SELECT id FROM pedidos WHERE id = %s", (pedido_id,))
-    pedido = cur.fetchone()
-
-    if not pedido:
-        return jsonify({"error": "Pedido não encontrado"}), 404
 
     # Atualiza o status do pedido
     cur.execute("UPDATE pedidos SET status_id = %s WHERE id = %s", (status_id, pedido_id))
@@ -144,59 +182,6 @@ def update_status():
 
     return jsonify({"message": "Status atualizado e registrado no histórico"})
 
-@app.route('/update_location', methods=['POST'])
-def update_location():
-    """Atualiza a localização do entregador e emite WebSocket"""
-    data = request.get_json()
-    entregador_id = data.get('id')
-    latitude = data.get('latitude')
-    longitude = data.get('longitude')
-
-    if not entregador_id or latitude is None or longitude is None:
-        return jsonify({'error': 'Dados inválidos'}), 400
-
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO entregadores (id, latitude, longitude)
-        VALUES (%s, %s, %s)
-        ON CONFLICT (id) DO UPDATE SET latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude
-    """, (entregador_id, latitude, longitude))
-    conn.commit()
-    cur.close()
-    conn.close()
-
-    socketio.emit('location_update', {'id': entregador_id, 'latitude': latitude, 'longitude': longitude})
-
-    return jsonify({'message': 'Localização atualizada e enviada via WebSocket'})
-
-@app.route('/get_status_history/<pedido_id>', methods=['GET'])
-def get_status_history(pedido_id):
-    """Obtém o histórico de status de um pedido"""
-    conn = get_db_connection()
-    cur = conn.cursor()
-
-    cur.execute('''
-        SELECT s.descricao, h.data_hora 
-        FROM historico_status h
-        JOIN status s ON h.status_id = s.id
-        WHERE h.pedido_id = %s
-        ORDER BY h.data_hora ASC
-    ''', (pedido_id,))
-
-    fuso_sp = pytz.timezone("America/Sao_Paulo")
-    
-    historico = []
-    for row in cur.fetchall():
-        data_utc = row[1].replace(tzinfo=pytz.utc)
-        data_sp = data_utc.astimezone(fuso_sp)
-        historico.append({"status": row[0], "data_hora": data_sp.strftime("%d/%m/%Y %H:%M:%S")})
-    
-    cur.close()
-    conn.close()
-
-    return jsonify(historico)
-
 @socketio.on('connect')
 def handle_connect():
     print('Cliente conectado')
@@ -207,5 +192,5 @@ def handle_disconnect():
 
 if __name__ == '__main__':
     init_db()
-    print("✅ A API está rodando com WebSockets e criação automática de pedidos!")
+    print("✅ A API está rodando com WebSockets e gerenciamento de entregadores!")
     socketio.run(app, host='0.0.0.0', port=5000)
