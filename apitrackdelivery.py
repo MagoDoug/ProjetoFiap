@@ -114,8 +114,9 @@ def get_location(entregador_id):
         except requests.exceptions.RequestException:
             address = "Falha na comunicação com OpenStreetMap"
 
-        return jsonify({'id': entregador_id, 'latitude': latitude, 'longitude': longitude, 'address': address})
-    
+        #return jsonify({'id': entregador_id, 'latitude': latitude, 'longitude': longitude, 'address': address})
+        return jsonify({'id': entregador_id, 'latitude': latitude, 'longitude': longitude})
+
     return jsonify({'error': 'Entregador não encontrado'}), 404
 
 @app.route('/update_status', methods=['POST'])
