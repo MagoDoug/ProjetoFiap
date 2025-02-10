@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Status do Pedido</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         body {
@@ -20,27 +22,108 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
+        .status-box {
+            padding: 15px;
+            border-left: 4px solid red;
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+            opacity: 0.5;
+        }
+        .status-box.active {
+            border-left-color: red;
+            opacity: 1;
+        }
+        .status-box div.time {
+            font-size: 12px;
+            color: gray;
+            margin-top: 5px;
+        }
+        .map-container {
+            margin-top: 20px;
+            background: #e9ecef;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        #map {
+            height: 300px;
+            width: 100%;
+        }
         #historico-status {
             margin-top: 20px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .historico-item {
+            padding: 5px 0;
+            border-bottom: 1px solid #ddd;
+            font-size: 14px;
+        }
+        .historico-item:last-child {
+            border-bottom: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Status do Pedido</h2>
-        <div id="status-atual">Aguardando atualização...</div>
+        <div class="status-box" id="status-confirmado">
+            <div>📌 Pedido Confirmado</div>
+            <p class="descricao-detalhada">Seu pedido foi recebido e está sendo processado</p>
+            <div class="time">--:--</div>
+        </div>
+        <div class="status-box" id="status-preparacao">
+            <div>👨‍🍳 Em Preparação</div>
+            <p class="descricao-detalhada">Seu pedido está sendo preparado para envio</p>
+            <div class="time">--:--</div>
+        </div>
+        <div class="status-box" id="status-transito">
+            <div>🚚 Em Trânsito</div>
+            <p class="descricao-detalhada">Seu pedido está a caminho</p>
+            <div class="time">--:--</div>
+        </div>
+        <div class="status-box" id="status-entregue">
+            <div>✅ Entregue</div>
+            <p class="descricao-detalhada">Seu pedido foi entregue com sucesso</p>
+            <div class="time">--:--</div>
+        </div>
 
         <h3>Histórico de Status</h3>
-        <ul id="historico-status"></ul>
+        <div id="historico-status"></div>
+
+        <div class="map-container">
+            <h3>Localização Atual</h3>
+            <div id="map"></div>
+        </div>
     </div>
 
     <script>
         var socket = io("https://projetofiap.onrender.com");
         var pedidoId = 1;
+        var map = L.map('map').setView([-23.55052, -46.633308], 18);
+        
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        }).addTo(map);
+        
+        var motoIcon = L.icon({
+            iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
+            iconSize: [40, 40]
+        });
+
+        var marker = L.marker([-23.55052, -46.633308], { icon: motoIcon }).addTo(map);
 
         socket.on("status_update", function(data) {
             console.log("🔄 Status atualizado:", data);
             atualizarHistorico();
+        });
+
+        socket.on("location_update", function(data) {
+            console.log("📍 Nova localização:", data);
+            marker.setLatLng([data.latitude, data.longitude]);
+            map.setView([data.latitude, data.longitude], 18);
         });
 
         async function atualizarHistorico() {
@@ -50,7 +133,7 @@
 
                 let historicoHtml = "";
                 historico.forEach(item => {
-                    historicoHtml += `<li>${item.status} - ${item.data_hora}</li>`;
+                    historicoHtml += `<div class="historico-item">${item.status} - ${item.data_hora}</div>`;
                 });
 
                 document.getElementById("historico-status").innerHTML = historicoHtml;
