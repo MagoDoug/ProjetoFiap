@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <link rel="icon" href="data:;base64,iVBORw0KGgo="> <!-- Corrige erro de favicon -->  
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -45,7 +44,6 @@
             background: #e9ecef;
             padding: 20px;
             border-radius: 10px;
-            display: none; /* 🔹 O mapa começa oculto */
         }
         #map {
             height: 300px;
@@ -77,7 +75,7 @@
             <div class="time" id="time-entregue">--:--</div>
         </div>
 
-        <div class="map-container" id="map-container">
+        <div class="map-container">
             <h3>Localização Atual</h3>
             <div id="map"></div>
         </div>
@@ -85,9 +83,30 @@
 
     <script>
         var socket = io("https://projetofiap.onrender.com");
-        var pedidoId = 1; // Alterar conforme necessário
-        var map, marker;
-        var mapInitialized = false; // 🔹 Controle para iniciar o mapa apenas uma vez
+        var pedidoId = 1;
+        var map = L.map('map').setView([-23.55052, -46.633308], 18);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        }).addTo(map);
+
+        var motoIcon = L.icon({
+            iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
+            iconSize: [40, 40]
+        });
+
+        var marker = L.marker([-23.55052, -46.633308], { icon: motoIcon }).addTo(map);
+
+        socket.on("status_update", function(data) {
+            console.log("🔄 Status atualizado:", data);
+            atualizarHistorico();
+        });
+
+        socket.on("location_update", function(data) {
+            console.log("📍 Nova localização:", data);
+            marker.setLatLng([data.latitude, data.longitude]);
+            map.setView([data.latitude, data.longitude], 18);
+        });
 
         async function atualizarHistorico() {
             try {
@@ -105,63 +124,16 @@
                     if (statusBoxes[item.status]) {
                         let statusElement = document.getElementById(statusBoxes[item.status]);
                         let timeElement = statusElement.querySelector(".time");
-
+                        
                         statusElement.classList.add("active");
                         timeElement.textContent = item.data_hora;
                     }
                 });
 
-                // 🔹 Se o status atual for "Em Trânsito", ativa o mapa
-                if (historico.some(item => item.status === "Em Trânsito")) {
-                    ativarMapa();
-                }
-
             } catch (error) {
                 console.error("❌ Erro ao buscar histórico de status:", error);
             }
         }
-
-        async function ativarMapa() {
-            if (!mapInitialized) {
-                try {
-                    const response = await fetch(`https://projetofiap.onrender.com/get_last_location`);
-                    const data = await response.json();
-
-                    document.getElementById("map-container").style.display = "block"; // 🔹 Exibe o mapa
-
-                    map = L.map('map').setView([data.latitude, data.longitude], 18);
-
-                    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-                        attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-                    }).addTo(map);
-
-                    var motoIcon = L.icon({
-                        iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
-                        iconSize: [40, 40]
-                    });
-
-                    marker = L.marker([data.latitude, data.longitude], { icon: motoIcon }).addTo(map);
-
-                    mapInitialized = true;
-                } catch (error) {
-                    console.error("❌ Erro ao buscar localização inicial:", error);
-                }
-            }
-        }
-
-        socket.on("status_update", function(data) {
-            console.log("🔄 Status atualizado:", data);
-            atualizarHistorico();
-        });
-
-        socket.on("location_update", function(data) {
-            console.log("📍 Nova localização:", data);
-
-            if (mapInitialized) {
-                marker.setLatLng([data.latitude, data.longitude]);
-                map.setView([data.latitude, data.longitude], 18);
-            }
-        });
 
         atualizarHistorico();
     </script>
