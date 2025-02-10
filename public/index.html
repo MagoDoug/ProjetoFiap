@@ -113,11 +113,13 @@
         var socket = io("https://projetofiap.onrender.com");
         var pedidoId = null;
         var statusAtual = null;
+        var map = null;
+        var marker = null;
         const statusMap = {
-            "Pedido Confirmado": 1,
-            "Em Preparação": 2,
-            "Em Trânsito": 3,
-            "Entregue": 4
+            1: "Pedido Confirmado",
+            2: "Em Preparação",
+            3: "Em Trânsito",
+            4: "Entregue"
         };
 
         document.getElementById("btnCriarPedido").addEventListener("click", async function() {
@@ -145,23 +147,13 @@
             const novoStatus = statusAtual + 1;
             if (novoStatus > 4) return alert("O pedido já foi entregue!");
 
-            const response = await fetch("https://projetofiap.onrender.com/update_status", { 
+            await fetch("https://projetofiap.onrender.com/update_status", { 
                 method: "POST", 
                 headers: { "Content-Type": "application/json" }, 
                 body: JSON.stringify({ pedido_id: pedidoId, status_id: novoStatus }) 
             });
-            
-            atualizarHistorico();
-        });
 
-        document.getElementById("btnSimularEntrega").addEventListener("click", async function() {
-            if (!pedidoId) return alert("Consulte um pedido primeiro.");
-            await fetch("https://projetofiap.onrender.com/assign_entregador", { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json" }, 
-                body: JSON.stringify({ pedido_id: pedidoId, entregador_id: "123", latitude: -23.55052, longitude: -46.633308 }) 
-            });
-            simularEntrega();
+            atualizarHistorico();
         });
 
         async function atualizarHistorico() {
@@ -173,20 +165,21 @@
                 document.getElementById(`status-${item.status.replace(" ", "").toLowerCase()}`).classList.add("active");
             });
 
-            statusAtual = statusMap[historico[historico.length - 1].status];
+            statusAtual = historico[historico.length - 1]?.status_id || 1;
 
             document.getElementById("btnSimularEntrega").disabled = statusAtual !== 3;
+
+            if (statusAtual === 3) {
+                document.getElementById("map-container").style.display = "block";
+                iniciarMapa();
+            }
         }
 
-        async function simularEntrega() {
-            const trajeto = [[-23.55052, -46.633308], [-23.55100, -46.633500], [-23.55150, -46.633700]];
-            for (const [lat, lon] of trajeto) {
-                await fetch("https://projetofiap.onrender.com/update_location", { 
-                    method: "POST", 
-                    headers: { "Content-Type": "application/json" }, 
-                    body: JSON.stringify({ id: "123", latitude: lat, longitude: lon }) 
-                });
-                await new Promise(resolve => setTimeout(resolve, 2000));
+        function iniciarMapa() {
+            if (!map) {
+                map = L.map('map').setView([-23.55052, -46.633308], 18);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                marker = L.marker([-23.55052, -46.633308]).addTo(map);
             }
         }
 
