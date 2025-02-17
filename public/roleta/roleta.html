@@ -18,8 +18,8 @@
             position: relative;
         }
         .roleta {
-            width: 300px;
-            height: 300px;
+            width: 250px;
+            height: 250px;
             border-radius: 50%;
             border: 5px solid #d11a2a;
             position: relative;
@@ -30,15 +30,17 @@
             padding: 10px 20px;
             background-color: #d11a2a;
             color: white;
-            border: none;
-            font-size: 16px;
+            border: 5px;
+            font-size: 14px;
             cursor: pointer;
         }
         .ponteiro {
             width: 20px;
             height: 40px;
-            background-color: #d11a2a;
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            background-color: #d1c51a;
+            border: 5px solid #d11a2a;
+            /*clip-path: polygon(50% 0%, 0% 100%, 100% 100%);*/
+            clip-path: polygon(5% 5%, 100% 0%, 100% 75%, 75% 75%, 75% 100%, 50% 75%, 0% 75%);
             position: absolute;
             top: -20px;
             left: 50%;
@@ -46,7 +48,7 @@
         }
         #resultado {
             margin-top: 20px;
-            font-size: 18px;
+            font-size: 14px;
             font-weight: bold;
         }
     </style>
