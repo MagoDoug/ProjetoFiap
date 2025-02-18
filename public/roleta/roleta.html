@@ -12,7 +12,7 @@
             justify-content: center;
             height: 100vh;
             background-color: #ffe6e6;
-            font-family: Arial, sans-serif;
+            font-family: bree, serif;
         }
         .container {
             position: relative;
@@ -30,24 +30,25 @@
             padding: 10px 20px;
             background-color: #d11a2a;
             color: white;
-            border: none;
+            border-radius: 50%;
+            border: 3px solid white;
             font-size: 16px;
             cursor: pointer;
         }
         .ponteiro {
-            width: 25px;
-            height: 50px;
-            background-color: yellow;
+            width: 20px;
+            height: 20px;
+            background-color: gold;
             clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
             position: absolute;
-            top: -20px;
+            top: -10px;
             left: 50%;
             transform: translateX(-50%) rotate(180deg);
             z-index: 10;
         }
         #resultado {
-            margin-top: 20px;
-            font-size: 18px;
+            margin-top: 10px;
+            font-size: 16px;
             font-weight: bold;
         }
     </style>
@@ -96,7 +97,7 @@
                 ctx.rotate(anguloSetor * i + anguloSetor / 2);
                 ctx.textAlign = "right";
                 ctx.fillStyle = "black";
-                ctx.font = "14px Arial";
+                ctx.font = "20px Arial";
                 ctx.fillText(premios[i], 130, 5);
                 ctx.restore();
             }
