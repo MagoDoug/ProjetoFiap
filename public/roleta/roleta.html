@@ -13,16 +13,15 @@
             height: 100vh;
             background-color: #ffe6e6;
             font-family: Arial, sans-serif;
-            font-size: 14px;
         }
         .container {
             position: relative;
         }
         .roleta {
-            width: 250px;
-            height: 250px;
+            width: 150px;
+            height: 150px;
             border-radius: 50%;
-            border: 5px solid #d11a2a;
+            border: 3px solid #d11a2a;
             position: relative;
             transition: transform 3s ease-out;
         }
@@ -39,7 +38,6 @@
             width: 25px;
             height: 50px;
             background-color: yellow;
-            border: 1px solid black;
             clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
             position: absolute;
             top: -20px;
@@ -55,7 +53,7 @@
     </style>
 </head>
 <body>
-    <h1>Roleta de Prêmios</h1>
+    <h3>Roleta de Prêmios</h3>
     <div class="container">
         <div class="ponteiro"></div>
         <canvas id="canvas" class="roleta"></canvas>
