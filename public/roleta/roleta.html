@@ -13,6 +13,7 @@
             height: 100vh;
             background-color: #ffe6e6;
             font-family: Arial, sans-serif;
+            font-size: 14px;
         }
         .container {
             position: relative;
@@ -30,26 +31,25 @@
             padding: 10px 20px;
             background-color: #d11a2a;
             color: white;
-            border: 5px;
-            font-size: 14px;
+            border: none;
+            font-size: 16px;
             cursor: pointer;
         }
         .ponteiro {
-            width: 20px;
-            height: 40px;
-            background-color: #d1c51a;
+            width: 25px;
+            height: 50px;
+            background-color: yellow;
             border: 1px solid black;
-            /*clip-path: polygon(50% 0%, 0% 100%, 100% 100%);*/
-            clip-path: polygon(100% 100%, 0% 50%, 100% 0%);
-            /*clip-path: polygon(5% 5%, 100% 0%, 100% 75%, 75% 75%, 75% 100%, 50% 75%, 0% 75%);*/
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
             position: absolute;
             top: -20px;
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) rotate(180deg);
+            z-index: 10;
         }
         #resultado {
             margin-top: 20px;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: bold;
         }
     </style>
@@ -69,14 +69,14 @@
         canvas.width = 300;
         canvas.height = 300;
         const premios = [
-            "Cupom 20%", 
-            "100 reais em compras", 
-            "20% de desconto", 
-            "1 brinde especial", 
-            "1 mês grátis", 
-            "250 reais em compras", 
-            "50% de desconto", 
-            "1 brinde especial"
+            "A", 
+            "B", 
+            "C", 
+            "D", 
+            "E", 
+            "F", 
+            "G", 
+            "H"
         ];
         const colors = ["#fff", "#d11a2a"];
         let anguloAtual = 0;
@@ -108,11 +108,17 @@
         function girarRoleta() {
             let giroAleatorio = Math.floor(3600 + Math.random() * 360);
             let rotacaoFinal = anguloAtual + giroAleatorio;
+
             document.querySelector(".roleta").style.transform = `rotate(${rotacaoFinal}deg)`;
             anguloAtual = rotacaoFinal;
+
             setTimeout(() => {
-                let angulo = (rotacaoFinal % 360) / 360;
-                let indexPremio = Math.floor(premios.length - (angulo * premios.length));
+                let numSetores = premios.length;
+                let anguloSetor = 360 / numSetores;
+                let anguloFinal = (360 - (rotacaoFinal % 360)) % 360;
+                let indexPremio = Math.floor(anguloFinal / anguloSetor) % numSetores;
+                indexPremio = (indexPremio - 2 + numSetores) % numSetores;
+
                 document.getElementById("resultado").innerText = "Você ganhou: " + premios[indexPremio];
             }, 3000);
         }
