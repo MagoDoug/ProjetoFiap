@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roleta de Prêmios</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #ffe6e6;
+            font-family: Arial, sans-serif;
+            margin: 0;
+        }
+        .container {
+            position: relative;
+            width: 410px;
+            height: 410px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #canvas {
+            display: block;
+            border-radius: 50%;
+        }      
+        .botao-girar {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #d11a2a;
+            color: white;
+            border-radius: 10px;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            position: relative;
+            z-index: 10; /* Garantindo que fique acima do ponteiro */
+        }
+        .ponteiro {
+            width: 140px;
+            height: 140px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 5;
+            pointer-events: none; /* Permite que o clique passe pelo ponteiro */
+        }
+        #resultado {
+            margin-top: 10px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h3>Roleta de Prêmios</h3>
+    <div class="container">
+        <img src="https://iili.io/3JjiYJt.png" alt="Ponteiro" class="ponteiro"> <!-- Substitua pelo caminho correto da imagem do ponteiro -->
+        <canvas id="canvas"></canvas>
+    </div>
+    <button class="botao-girar" onclick="girarRoleta()">Girar a roleta</button>
+    <p id="resultado"></p>
+    
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        const img = new Image();
+        img.src = "https://iili.io/3JXQJDb.png"; // Substitua pelo caminho correto da imagem da roleta
+        
+        let anguloAtual = 0;
+        img.onload = function() {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            desenharRoleta();
+        };
+
+        function desenharRoleta() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(anguloAtual * Math.PI / 180);
+            ctx.drawImage(img, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height);
+            ctx.restore();
+        }
+
+        function girarRoleta() {
+            let giroAleatorio = Math.floor(3600 + Math.random() * 360);
+            let rotacaoFinal = anguloAtual + giroAleatorio;
+            
+            let interval = setInterval(() => {
+                anguloAtual += 10;
+                desenharRoleta();
+                if (anguloAtual >= rotacaoFinal) {
+                    clearInterval(interval);
+                    determinarPremio(rotacaoFinal);
+                }
+            }, 10);
+        }
+
+        function determinarPremio(rotacaoFinal) {
+            console.log('Rotação final:', rotacaoFinal);
+            let numSetores = 6.5;
+            let anguloSetor = 360 / numSetores;
+            let anguloFinal = (360 - (rotacaoFinal % 360)) % 360;
+            let indexPremio = Math.floor(anguloFinal / anguloSetor) % numSetores;
+            console.log('Índice do prêmio:', indexPremio);
+            /*let indexPremio = (indexPremio - 2 + numSetores) % numSetores;*/
+
+            const premios = ["Cupom até R$30", "Não foi desta vez", "+ 1 Rodada", "Clube de Presente", "Ofertas a partir de R$0,99", "Cupom R$10,00"];
+            document.getElementById("resultado").innerText = "Você ganhou: " + premios[indexPremio];
+        }
+    </script>
+</body>
+</html>
