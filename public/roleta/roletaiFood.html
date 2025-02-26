@@ -103,14 +103,13 @@
         }
 
         function determinarPremio(rotacaoFinal) {
-            console.log('Rotação final:', rotacaoFinal);
+            /*console.log('Rotação final:', rotacaoFinal);*/
             let numSetores = 6.5;
             let anguloSetor = 360 / numSetores;
             let anguloFinal = (360 - (rotacaoFinal % 360)) % 360;
             let indexPremio = Math.floor(anguloFinal / anguloSetor) % numSetores;
-            console.log('Índice do prêmio:', indexPremio);
-            /*let indexPremio = (indexPremio - 2 + numSetores) % numSetores;*/
-
+            /*console.log('Índice do prêmio:', indexPremio);*/
+            
             const premios = ["Cupom até R$30", "Não foi desta vez", "+ 1 Rodada", "Clube de Presente", "Ofertas a partir de R$0,99", "Cupom R$10,00"];
             document.getElementById("resultado").innerText = "Você ganhou: " + premios[indexPremio];
         }
