@@ -6,6 +6,7 @@ import psycopg2
 import os
 from urllib.parse import urlparse
 from flask_cors import CORS
+from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
@@ -73,7 +74,8 @@ def update_location():
     conn.close()
 
     if row:
-        socketio.emit('location_update', {'id': row[0], 'created_at': row[1], 'pedido_id': pedido_id, 'latitude': latitude, 'longitude': longitude})
+        created_at_str = row[1].isoformat() if isinstance(row[1], datetime) else str(row[1])
+        socketio.emit('location_update', {'id': row[0], 'created_at': created_at_str, 'pedido_id': pedido_id, 'latitude': latitude, 'longitude': longitude})
         return jsonify({'message': 'Localização atualizada e enviada via WebSocket'})
     else:
         return jsonify({'error': 'Pedido não encontrado'}), 404
