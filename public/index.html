@@ -85,7 +85,7 @@
     <script>
         var socket = io("https://projetofiap.onrender.com");
         var pedidoId = 1;
-        var map = L.map('map').setView([-23.55052, -46.633308], 18);
+        var map = L.map('map').setView([-23.478607, -46.608985], 16);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
@@ -96,7 +96,7 @@
             iconSize: [40, 40]
         });
 
-        var marker = L.marker([-23.55052, -46.633308], { icon: motoIcon }).addTo(map);
+        var marker = L.marker([-23.478607, -46.608985], { icon: motoIcon }).addTo(map);
 
         socket.on("status_update", function(data) {
             console.log("🔄 Status atualizado:", data);
@@ -106,7 +106,7 @@
         socket.on("location_update", function(data) {
             console.log("📍 Nova localização:", data);
             marker.setLatLng([data.latitude, data.longitude]);
-            map.setView([data.latitude, data.longitude], 18);
+            map.setView([data.latitude, data.longitude], 16);
         });
 
         async function atualizarHistorico() {
