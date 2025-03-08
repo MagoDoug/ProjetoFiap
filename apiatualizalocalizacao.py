@@ -26,7 +26,7 @@ def get_db_connection():
         password=result.password,
         host=result.hostname,
         port=result.port,
-	sslmode='require'  # Importante para Supabase
+        sslmode='require'  # Importante para Supabase
     )
 
 def init_db():
@@ -39,10 +39,8 @@ def init_db():
             id SERIAL PRIMARY KEY,
             created_at TIMESTAMPTZ DEFAULT NOW(),
             pedido_id INT UNIQUE,
-            entregador_id INT,
             latitude TEXT,
-            longitude TEXT,
-            rating FLOAT
+            longitude TEXT
         )
     ''')
     
@@ -67,7 +65,7 @@ def update_location():
         UPDATE localizacao 
         SET latitude = %s, longitude = %s
         WHERE pedido_id = %s
-        RETURNING id, created_at, entregador_id, rating
+        RETURNING id, created_at
     """, (latitude, longitude, pedido_id))
     row = cur.fetchone()
     conn.commit()
@@ -75,7 +73,7 @@ def update_location():
     conn.close()
 
     if row:
-        socketio.emit('location_update', {'id': row[0], 'created_at': row[1], 'pedido_id': pedido_id, 'entregador_id': row[2], 'latitude': latitude, 'longitude': longitude, 'rating': row[3]})
+        socketio.emit('location_update', {'id': row[0], 'created_at': row[1], 'pedido_id': pedido_id, 'latitude': latitude, 'longitude': longitude})
         return jsonify({'message': 'Localização atualizada e enviada via WebSocket'})
     else:
         return jsonify({'error': 'Pedido não encontrado'}), 404
