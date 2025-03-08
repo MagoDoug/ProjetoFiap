@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rastreamento de Localização</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=" /> <!-- Evita erro de favicon -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: auto;
+            margin: auto;
+            background: white;
+            padding: auto;
+            border-radius: auto;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .map-container {
+            margin-top: 5px;
+            background: #e9ecef;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        #map {
+            height: 250px;
+            width: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        var socket = io("https://projetofiap.onrender.com");
+        var pedidoId = 1;
+        var map = L.map('map').setView([-23.478607, -46.608985], 16);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+        }).addTo(map);
+
+        var motoIcon = L.icon({
+            iconUrl: 'https://i.postimg.cc/Dy8NqPJD/moto-removebg-preview.png',
+            iconSize: [40, 40]
+        });
+
+        var marker = L.marker([-23.478607, -46.608985], { icon: motoIcon }).addTo(map);
+
+        socket.on("location_update", function(data) {
+            console.log("📍 Nova localização:", data);
+            marker.setLatLng([data.latitude, data.longitude]);
+            map.setView([data.latitude, data.longitude], 16);
+        });
+    </script>
+</body>
+</html>
